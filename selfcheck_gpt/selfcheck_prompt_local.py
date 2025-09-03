@@ -1,31 +1,25 @@
-import time
 from typing import List
 from tqdm import tqdm
 
 import numpy as np
 
-from openai import OpenAI
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-class SelfCheckPromptAPI:
+class SelfCheckPromptLocal:
     def __init__(
         self,
-        model="gpt-4o-mini-2024-07-18",
-        api_key="",
+        model_name="Qwen/Qwen3-4B-Instruct-2507",
         prompt_template_path="",
-        retries=3,
     ):
-        self.client = OpenAI(api_key=api_key)
-        self.model = model
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name, dtype="auto", device_map="auto"
+        )
         with open(prompt_template_path) as f:
             self.prompt_template = f.read()
-        self.text_mapping = {
-            "no": 1.0,
-            "n/a": 0.5,
-            "yes": 0.0,
-        }
+        self.text_mapping = {"no": 1.0, "n/a": 0.5, "yes": 0.0}
         self.not_defined_verdict = set()
-        self.retries = retries
 
     def set_prompt_template(self, prompt_template: str):
         self.prompt_template = prompt_template
@@ -48,21 +42,17 @@ class SelfCheckPromptAPI:
         return self.text_mapping[verdict]
 
     def generate_verdict(self, prompt: str, max_tokens=5):
-        for attempt in range(self.retries):
-            try:
-                request_kwargs = {
-                    "model": self.model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_completion_tokens": max_tokens,
-                }
-
-                response = self.client.chat.completions.create(**request_kwargs)
-                return response.choices[0].message.content
-            except Exception as e:
-                if attempt + 1 < self.retries:
-                    time.sleep(1)
-                else:
-                    raise e
+        messages = [{"role": "user", "content": prompt}]
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
+        generated_ids = self.model.generate(**model_inputs, max_new_tokens=max_tokens)
+        outputs_ids = generated_ids[0][len(model_inputs.input_ids[0]) :].tolist()
+        content = self.tokenizer.decode(outputs_ids, skip_special_tokens=True)
+        return content
 
     def predict_hallucination(
         self, sentences: List[str], sample_responses: List[str], verbose: bool = False
