@@ -27,10 +27,7 @@ class SelfCheckPromptAPI:
         self.not_defined_verdict = set()
         self.retries = retries
 
-    def set_prompt_template(self, prompt_template: str):
-        self.prompt_template = prompt_template
-
-    def postprocess_verdict(
+    def _postprocess_verdict(
         self,
         verdict,
     ):
@@ -47,7 +44,7 @@ class SelfCheckPromptAPI:
             verdict = "n/a"
         return self.text_mapping[verdict]
 
-    def generate_verdict(self, prompt: str, max_tokens=5):
+    def _generate_verdict(self, prompt: str, max_tokens=5):
         for attempt in range(self.retries):
             try:
                 request_kwargs = {
@@ -64,6 +61,9 @@ class SelfCheckPromptAPI:
                 else:
                     raise e
 
+    def set_prompt_template(self, prompt_template: str):
+        self.prompt_template = prompt_template
+
     def predict_hallucination(
         self, sentences: List[str], sample_responses: List[str], verbose: bool = False
     ):
@@ -79,7 +79,7 @@ class SelfCheckPromptAPI:
                 verdict_prompt = self.prompt_template.format(
                     context=sample_response, sentence=sentence
                 )
-                verdict = self.generate_verdict(verdict_prompt)
-                scores[i, j] = self.postprocess_verdict(verdict)
+                verdict = self._generate_verdict(verdict_prompt)
+                scores[i, j] = self._postprocess_verdict(verdict)
         score_per_sentence = scores.mean(axis=-1)
         return score_per_sentence.tolist()

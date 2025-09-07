@@ -21,10 +21,7 @@ class SelfCheckPromptLocal:
         self.text_mapping = {"no": 1.0, "n/a": 0.5, "yes": 0.0}
         self.not_defined_verdict = set()
 
-    def set_prompt_template(self, prompt_template: str):
-        self.prompt_template = prompt_template
-
-    def postprocess_verdict(
+    def _postprocess_verdict(
         self,
         verdict,
     ):
@@ -41,7 +38,7 @@ class SelfCheckPromptLocal:
             verdict = "n/a"
         return self.text_mapping[verdict]
 
-    def generate_verdict(self, prompt: str, max_tokens=5):
+    def _generate_verdict(self, prompt: str, max_tokens=5):
         messages = [{"role": "user", "content": prompt}]
         text = self.tokenizer.apply_chat_template(
             messages,
@@ -53,6 +50,9 @@ class SelfCheckPromptLocal:
         outputs_ids = generated_ids[0][len(model_inputs.input_ids[0]) :].tolist()
         content = self.tokenizer.decode(outputs_ids, skip_special_tokens=True)
         return content
+
+    def set_prompt_template(self, prompt_template: str):
+        self.prompt_template = prompt_template
 
     def predict_hallucination(
         self, sentences: List[str], sample_responses: List[str], verbose: bool = False
@@ -69,7 +69,7 @@ class SelfCheckPromptLocal:
                 verdict_prompt = self.prompt_template.format(
                     context=sample_response, sentence=sentence
                 )
-                verdict = self.generate_verdict(verdict_prompt)
+                verdict = self._generate_verdict(verdict_prompt)
                 scores[i, j] = self.postprocess_verdict(verdict)
         score_per_sentence = scores.mean(axis=-1)
         return score_per_sentence.tolist()
