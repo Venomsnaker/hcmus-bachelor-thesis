@@ -18,7 +18,7 @@ class SelfCheckPromptLocal:
         )
         with open(prompt_template_path) as f:
             self.prompt_template = f.read()
-        self.text_mapping = {"no": 1.0, "n/a": 0.5, "yes": 0.0}
+        self.outputs_mapping = {"no": 1.0, "n/a": 0.5, "yes": 0.0}
         self.not_defined_verdict = set()
 
     def _postprocess_verdict(
@@ -36,7 +36,7 @@ class SelfCheckPromptLocal:
                 print(f"WARNING: '{verdict}' not defined.")
                 self.not_defined_verdict.add(verdict)
             verdict = "n/a"
-        return self.text_mapping[verdict]
+        return self.outputs_mapping[verdict]
 
     def _generate_verdict(self, prompt: str, max_tokens=5):
         messages = [{"role": "user", "content": prompt}]
