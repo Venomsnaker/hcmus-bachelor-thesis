@@ -19,7 +19,7 @@ class SelfCheckPromptAPI:
         self.model = model
         with open(prompt_template_path) as f:
             self.prompt_template = f.read()
-        self.outputs_mapping = {
+        self.output_mapping = {
             "no": 1.0,
             "n/a": 0.5,
             "yes": 0.0,
@@ -42,7 +42,7 @@ class SelfCheckPromptAPI:
                 print(f"WARNING: '{verdict}' not defined.")
                 self.not_defined_verdict.add(verdict)
             verdict = "n/a"
-        return self.outputs_mapping[verdict]
+        return self.output_mapping[verdict]
 
     def _generate_verdict(self, prompt: str, max_tokens=5):
         for attempt in range(self.retries):
